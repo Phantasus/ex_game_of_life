@@ -32,3 +32,5 @@ game_of_life-*.tar
 npm-debug.log
 /assets/node_modules/
 
+*~
+*\#
