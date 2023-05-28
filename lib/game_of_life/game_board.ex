@@ -232,4 +232,60 @@ defmodule GameOfLife.GameBoard do
     rules.(cell, state, alive_count)
     :ok
   end
+
+  @doc "Returns the style used for the draw spec using a letter for the RLE encoded value"
+  def get_draw_spec_style(state) do
+    case state do
+      :alive -> "B"
+      :dead -> "W"
+    end
+  end
+
+  @doc "Returns an RLE encoded draw spec of the given gameboard row"
+  def get_draw_spec(row) do
+    last_state0 = :array.foldl(
+      fn idx, cell, acc = {count, last_state, buffer} ->
+        state = GameOfLife.Cell.get_state(cell)
+
+        cond do
+          last_state == state ->
+            {count + 1, last_state, buffer}
+          is_nil(last_state) -> 
+            {1, state, buffer}
+          not is_nil(last_state) ->
+            style = get_draw_spec_style(last_state)
+            {1, state, "#{buffer}#{count}#{style}"}
+        end
+      end,
+      {0, nil, ""},
+      row)
+
+    {count_last, last_state1, buffer_last}  = last_state0
+
+    if count_last > 0 do 
+      style = get_draw_spec_style(last_state1)
+
+      "#{buffer_last}#{count_last}#{style}"
+    else
+      buffer_last
+    end
+  end
+
+  @doc """
+  Returns a list of draw specs, which describe the current game board array
+  for drawing code, like an HTML canvas.
+  """
+  def get_draw_specs() do
+    specs = Agent.get(
+      __MODULE__,
+      fn state ->
+        new_rows = GameOfLife.Matrix.map_rows(
+          state.matrix,
+          fn y, row -> [y, get_draw_spec(row)] end)
+
+        :array.to_list(new_rows)
+      end)
+
+    {:ok, specs}
+  end
 end

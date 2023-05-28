@@ -318,4 +318,33 @@ defmodule GamOfLife.GameBoardTest do
       assert {:ok, expected1} == @used_module.get_cell_states()
     end
   end
+
+  describe "get_draw_specs" do
+    test "when small matrix" do
+      {:ok, _pid} = @used_module.start_link(%{width: 3, height: 3})
+
+      assert :ok == @used_module.kill_cell!({0, 0})
+      assert :ok == @used_module.kill_cell!({1, 0})
+      assert :ok == @used_module.kill_cell!({2, 0})
+
+      assert :ok == @used_module.kill_cell!({1, 1})
+
+      assert :ok == @used_module.kill_cell!({0, 2})
+      assert :ok == @used_module.kill_cell!({2, 2})
+      
+      expected0 = [
+        [:dead,  :dead,  :dead],
+        [:alive, :dead,  :alive],
+        [:dead,  :alive, :dead]
+      ]
+
+      expected = [
+        [0, "3W"],
+        [1, "1B1W1B"],
+        [2, "1W1B1W"]
+      ]
+      
+      assert {:ok, expected} == @used_module.get_draw_specs()
+    end
+  end
 end

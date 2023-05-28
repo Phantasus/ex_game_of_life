@@ -74,4 +74,9 @@ defmodule GameOfLife.Matrix do
     
     :array.get(Integer.mod(x, width), row)
   end
+
+  @doc "Maps the given `row_fn` to all the rows in the matrix"
+  def map_rows(matrix, row_fn) do
+    :array.map(row_fn, matrix)
+  end
 end
