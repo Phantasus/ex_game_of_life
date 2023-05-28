@@ -18,15 +18,31 @@ defmodule GameOfLife.GameBoard do
   use Agent
   
   def start_link(config) do
-    matrix = build_matrix(build_matrix_config(config))
+    matrix = GameOfLife.Matrix.build_matrix(build_matrix_config(config))
 
     state = %{
       matrix: matrix,
       width: config.width,
-      height: config.height
+      height: config.height,
+      game_rules: &standard_rules/3
     }
     
     Agent.start_link(fn -> state end, name: __MODULE__)
+  end
+
+  @doc "Applies the standard game of live rules"
+  def standard_rules(cell, state, alive_count) do
+    cond do
+      state == :alive and alive_count < 2 -> # rule1
+        GameOfLife.Cell.change_state!(cell, :dead)
+      state == :alive and (alive_count in [2,3]) -> # rule2
+        # lives on, do nothing
+        GameOfLife.Cell.live_on!(cell)
+      state == :alive and (alive_count > 3) ->
+        GameOfLife.Cell.change_state!(cell, :dead) # rule3
+      state == :dead and (alive_count == 3) ->
+        GameOfLife.Cell.change_state!(cell, :alive) # rule4
+    end
   end
 
   def build_matrix_config(config) do
@@ -38,75 +54,36 @@ defmodule GameOfLife.GameBoard do
   end
 
   def shutdown_matrix!(matrix) do
-    for row <- matrix do
-      shutdown_row!(row)
-    end
-  end
-
-  def shutdown_row!(row) do
-    for cell <- row do
-      shutdown_cell!(cell)
-    end
+    apply_to_cells(matrix, &shutdown_cell!/1)
   end
 
   def shutdown_cell!(pid) when is_pid(pid) do
     GameOfLife.Cell.shutdown_cell!(pid)
   end
 
-  @doc "Returns a new matrix"
-  def build_matrix(config) do
-    width  = config.width
-    height = config.height
-    builder = config.cell_builder
-    
-    cond do
-      height == 0 -> []
-      height < 0 -> raise("height negative")
-      width < 0 -> raise("width negative")
-      true ->
-        for column <- 0 .. (height - 1) do
-          build_row(width, column, builder)
-          |> Enum.reverse()
-        end
-    end
-  end
-
-  @doc "Helper for building matrix rows"
-  def build_row(0, _row_y, _lambda) do
-    []
-  end
-
-  def build_row(row_length, row_y, lambda) do
-    value = lambda.(row_length - 1, row_y)
-    [value | build_row(row_length - 1, row_y, lambda)]
-  end
-
   @doc "Applies the given `cell_fn` to all cell elements of the board matrix"
   def apply_to_cells(matrix, cell_fn) do
-    for row <- matrix do
-      for cell <- row do
-        cell_fn.(cell)
-      end
-    end
+    GameOfLife.Matrix.apply_to_cells(matrix, cell_fn)
   end
 
   @doc "Returns the states of the cells"
   def get_cell_states() do
     getter = fn state ->
       new_cells = state.matrix
-      |> apply_to_cells(fn cell -> GameOfLife.Cell.get_state(cell) end)
+      |> apply_to_cells(fn _pos, cell -> GameOfLife.Cell.get_state(cell) end)
 
-      {:ok, new_cells}
+      {:ok, GameOfLife.Matrix.to_list(new_cells)}
     end
     
     Agent.get(__MODULE__, getter)
   end
 
   @doc "Returns the coordinates `{x, y}` of the stored cells"
-  def get_cell_coordinates() do
+  def get_cell_positions() do
     getter = fn state ->
       new_cells = state.matrix
-      |> apply_to_cells(fn cell -> GameOfLife.Cell.get_coordinate(cell) end)
+      |> apply_to_cells(fn position, _cell -> position end)
+      |> GameOfLife.Matrix.to_list()
 
       {:ok, new_cells}
     end
@@ -118,7 +95,8 @@ defmodule GameOfLife.GameBoard do
   def get_cell_pids() do
     getter = fn state ->
       new_cells = state.matrix
-      |> apply_to_cells(fn cell -> cell end)
+      |> apply_to_cells(fn _pos, cell -> cell end)
+      |> GameOfLife.Matrix.to_list()
 
       {:ok, new_cells}
     end
@@ -127,9 +105,9 @@ defmodule GameOfLife.GameBoard do
   end
 
   @doc "Returns the cell `pid` by their `{x, y}` coordinates"
-  def get_cell({x, y}) do
+  def get_cell(position) do
     getter = fn state ->
-      cell = Enum.at(Enum.at(state.matrix, y), x)
+      cell = GameOfLife.Matrix.get(state.matrix, position)
 
       {:ok, cell}
     end
@@ -149,7 +127,7 @@ defmodule GameOfLife.GameBoard do
 
   @doc "Returns the top neighbour of a cell"
   def get_top_neighbours({x, y}) do
-    width = get_board_width()
+    width  = get_board_width()
     height = get_board_height()
     
     new_x0 = rem(x - 1, width)
@@ -231,30 +209,27 @@ defmodule GameOfLife.GameBoard do
     {:ok, cells}
   end
 
+  @doc "Count the cell states which match the given state"
   def count_cell_states(cells, state) do
     Enum.map(cells, &GameOfLife.Cell.get_state/1)
     |> Enum.reduce(0, fn item, acc -> if item == state, do: acc + 1, else: acc end)
+  end
+
+  @doc "Returns the rules of the game board"
+  def get_game_rules() do
+    Agent.get(__MODULE__, fn state -> {:ok, state.game_rules} end)
   end
   
   @doc "Applies the game of life rules to the given cell"
   def apply_rules_to(position) do
     {:ok, neighbours} = get_neighbours(position)
 
-    {:ok, cell} = get_cell(position)
-    state       = GameOfLife.Cell.get_state(cell)
-    alive_count = count_cell_states(neighbours, :alive)
+    {:ok, cell}  = get_cell(position)
+    state        = GameOfLife.Cell.get_state(cell)
+    alive_count  = count_cell_states(neighbours, :alive)
+    {:ok, rules} = get_game_rules()
 
-    cond do
-      state == :alive and alive_count < 2 -> # rule1
-        GameOfLife.Cell.change_state!(cell, :dead)
-      state == :alive and (alive_count in [2,3]) -> # rule2
-        # lives on, do nothing
-        GameOfLife.Cell.live_on!(cell)
-      state == :alive and (alive_count > 3) ->
-        GameOfLife.Cell.change_state!(cell, :dead) # rule3
-      state == :dead and (alive_count == 3) ->
-        GameOfLife.Cell.change_state!(cell, :alive) # rule4
-    end
+    rules.(cell, state, alive_count)
     :ok
   end
 end

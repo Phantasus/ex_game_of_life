@@ -17,58 +17,7 @@
 defmodule GamOfLife.GameBoardTest do
   use ExUnit.Case, async: true
 
-  @used_module GameOfLife.GameBoard
-  
-  test "build_row" do
-    assert [] == @used_module.build_row(0, 0, fn _x, _y -> 0 end)
-    assert [0] == @used_module.build_row(1, 0, fn _x, _y -> 0 end)
-    assert [0, 0] == @used_module.build_row(2, 0, fn _x, _y -> 0 end)
-    assert [0, 0, 0] == @used_module.build_row(3, 0, fn _x, _y -> 0 end)
-    assert [0, 0, 0, 0, 0] == @used_module.build_row(5, 0, fn _x, _y -> 0 end)
-  end
-
-  describe "build_matrix" do
-    test "when empty" do
-      assert [] == @used_module.build_matrix(%{width: 0, height: 0, cell_builder: fn _x, _y -> 0 end})
-    end
-
-    test "when one item" do
-      expected = [
-        [0]
-      ]
-      
-      assert expected == @used_module.build_matrix(%{width: 1, height: 1, cell_builder: fn _x, _y -> 0 end})
-    end
-
-    test "when one row" do
-      expected = [
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-      ]
-      assert expected == @used_module.build_matrix(%{width: 10, height: 1, cell_builder: fn _x, _y -> 0 end})
-    end
-
-    test "when three rows" do
-      expected = [
-        [0, 0, 0],
-        [0, 0, 0],
-        [0, 0, 0]
-      ]
-      assert expected == @used_module.build_matrix(%{width: 3, height: 3, cell_builder: fn _x, _y -> 0 end})
-    end
-  end
-
-  describe "apply_to_cells" do
-    test "when small matrix" do
-      matrix = @used_module.build_matrix(%{width: 3, height: 3, cell_builder: fn _x, _y -> 0 end})
-      expected = [
-        [1, 1, 1],
-        [1, 1, 1],
-        [1, 1, 1]
-      ]
-
-      assert expected == @used_module.apply_to_cells(matrix, fn cell -> cell + 1 end)
-    end
-  end
+  @used_module GameOfLife.GameBoard  
 
   describe "get_cell_states/0" do
     test "small matrix" do
@@ -84,7 +33,7 @@ defmodule GamOfLife.GameBoardTest do
     end
   end
 
-  describe "get_cell_coordinates/0" do
+  describe "get_cell_positions/0" do
     test "small matrix" do
       {:ok, _pid} = @used_module.start_link(%{width: 3, height: 3})
 
@@ -94,7 +43,7 @@ defmodule GamOfLife.GameBoardTest do
         [{0, 2},  {1, 2}, {2, 2}]
       ]
 
-      assert {:ok, expected} == @used_module.get_cell_coordinates()
+      assert {:ok, expected} == @used_module.get_cell_positions()
     end
   end
 
