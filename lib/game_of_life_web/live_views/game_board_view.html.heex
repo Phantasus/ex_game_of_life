@@ -1,0 +1,118 @@
+<h3>Generation: <%= @generation %></h3>
+<canvas id="my_gameboard" width={@canvas_width} height={@canvas_height} style="border:1px solid gray;">
+</canvas> 
+<dl>
+  <dt>Render time</dt>
+  <dd><%= @render_time %> ms</dd>
+</dl>
+
+<script>
+  const pixelSize = <%= @pixel_size %>;
+  const canvasHeight = <%= @canvas_height %>;
+  const canvasWidth = <%= @canvas_width %>;
+
+  function getContext() {
+    var canvas = document.getElementById('my_gameboard');
+    var ctx = canvas.getContext('2d');
+
+    return ctx;
+  }
+
+  function clearScreen() {
+    var ctx = getContext();
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  }
+
+  function drawRowSegment(x, y, length, style) {
+    var ctx = getContext();
+
+    switch(style) {
+      case "_":
+        ctx.fillStyle = "rgb(255, 255, 255)";
+        ctx.fillRect(x * pixelSize, y * pixelSize, length * pixelSize, pixelSize);
+        break;
+      case "W":
+        ctx.fillStyle = "rgb(255, 255, 255)";
+        ctx.fillRect(x * pixelSize, y * pixelSize, length * pixelSize, pixelSize);
+        break;
+      case "B": 
+        ctx.fillStyle = "rgb(0, 0, 0)";
+        ctx.fillRect(x * pixelSize, y * pixelSize, length * pixelSize, pixelSize);
+        break;
+    }
+  }
+
+  function parseAmount(rleSpec) {
+    var amount = "";
+    var length = 0;
+    const numbers = [
+      "0", "1", "2", "3", "4",
+      "5", "6", "7", "8", "9"
+    ];
+
+    for (length; length < rleSpec.length; length++) {
+      var item = rleSpec.charAt(length);
+
+      if (numbers.includes(item)) {
+        amount = amount.concat(item);
+      }
+      else {
+        break;
+      }
+    }
+    return [parseInt(amount), rleSpec.slice(amount.length), length, amount];
+  }
+
+  function drawNextRleSpec(x, rowId, rleSpec) {
+    var parseResult = parseAmount(rleSpec);
+    var amount = parseResult[0];
+    var parseRest = parseResult[1];
+    var style = parseRest.slice(0, 1);
+
+    if (isNaN(amount)) return [0, ""];
+    if (style.length == 0) return [0, ""];
+
+    drawRowSegment(x, rowId, amount, style);
+    return [x + amount, parseRest.slice(1)];
+  }
+
+  // draws a run length (RLE) spec
+  function drawRleSpec(rowId, rleSpec) {
+    var run  = true;
+    var x = 0;
+    var rest = rleSpec;
+
+    while(run) {
+      var result = drawNextRleSpec(x, rowId, rest);
+      rest = result[1];
+      x = result[0];
+
+      if (rest.length > 0) {
+        run = true;
+      }
+      else {
+        run = false;
+      }
+    }
+    drawRowSegment(x, rowId, canvasWidth - x, "_");
+  }
+
+  function drawDrawSpec(drawSpec) {
+    var rowId    = drawSpec[0]; // row x coordinate
+    var rleSpec  = drawSpec[1];
+    drawRleSpec(rowId, rleSpec) // draw run length spec
+  }
+
+  function drawDrawSpecs(drawSpecs) {
+    for (var i=0; i < drawSpecs.length; i++) {
+      drawDrawSpec(drawSpecs[i]);
+    }
+  }
+  var drawSpecs = [];
+
+  window.addEventListener(`phx:redraw`, function (event) {
+    var drawSpecs = event.detail.specs;
+    console.log("Redrawing " + drawSpecs.length + " draw specs");
+    drawDrawSpecs(drawSpecs);
+  });
+</script>

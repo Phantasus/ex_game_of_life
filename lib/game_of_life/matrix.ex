@@ -67,7 +67,7 @@ defmodule GameOfLife.Matrix do
   end
 
   @doc "Returns the cell value at the given position"
-  def get(matrix, {x, y}) do
+  def get(matrix, {x, y}) when is_integer(x) and is_integer(y) do
     height = :array.size(matrix)
     row    = :array.get(Integer.mod(y, height), matrix)
     width  = :array.size(row)

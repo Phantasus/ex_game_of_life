@@ -337,6 +337,7 @@ defmodule GamOfLife.GameBoardTest do
         [:alive, :dead,  :alive],
         [:dead,  :alive, :dead]
       ]
+      assert {:ok, expected0} == @used_module.get_cell_states()
 
       expected = [
         [0, "3W"],
@@ -345,6 +346,29 @@ defmodule GamOfLife.GameBoardTest do
       ]
       
       assert {:ok, expected} == @used_module.get_draw_specs()
+    end
+  end
+
+  describe "generation phases, when using a clean state" do
+    test "first pass" do
+      {:ok, _pid} = @used_module.start_link(%{width: 3, height: 3})
+
+      assert :ok == @used_module.clear_board!()
+      expected0 = [
+        [:dead,  :dead,  :dead],
+        [:dead,  :dead,  :dead],
+        [:dead,  :dead,  :dead]
+      ]
+      assert {:ok, expected0} == @used_module.get_cell_states()
+
+      assert :ok == @used_module.apply_rules!()
+      
+      expected1 = [
+        [:dead,  :dead,  :dead],
+        [:dead,  :dead,  :dead],
+        [:dead,  :dead,  :dead]
+      ]
+      assert {:ok, expected1} == @used_module.get_cell_states()
     end
   end
 end
