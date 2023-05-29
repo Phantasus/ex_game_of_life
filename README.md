@@ -1,7 +1,11 @@
 # GameOfLife
 
 This is a small hacking exercise for fun in Elixir to implement a version of the
-Game of Life.
+Game of Life. It's a naive implementation, which uses the BEAMs ability
+to just run a ton of processes. So each cell of the Game is a process,
+which holds the state of the cell, that's not efficient and not a
+best practice to implement the game, but just an implementation to
+be for fun.
 
 # Startup
 To start your Phoenix server:
