@@ -30,9 +30,9 @@ defmodule GameOfLifeWeb.GameBoardView do
       Process.send_after(self(), :update, 2000)
     end
     
-    height = 200
-    width = 200
-    pixelsize = 2
+    height = 50
+    width = 50
+    pixelsize = 4
 
     {:ok, pid} = start_board(width, height)
     GameOfLife.GameBoard.clear_board!()
@@ -54,7 +54,7 @@ defmodule GameOfLifeWeb.GameBoardView do
   end
 
   def handle_info(:update, socket) do
-    Process.send_after(self(), :update, 2000)
+    Process.send_after(self(), :update, 250)
     time1 = DateTime.utc_now()
     GameOfLife.GameBoard.apply_rules!()
 
